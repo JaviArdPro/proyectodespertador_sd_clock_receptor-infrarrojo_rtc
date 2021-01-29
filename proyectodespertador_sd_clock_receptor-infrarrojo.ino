@@ -1,5 +1,6 @@
 #include <IRremote.h>
-//#include "RTClib.h"
+#include <Wire.h>
+#include "RTClib.h"
 #include <TM1637Display.h>
 // Define the connections pins:
 #include <SD.h>
@@ -22,11 +23,13 @@
 
 #define Boton_volumemas 0xDD996F5B
 #define Boton_volumemenos 0xAAF603FB
-//a eliminar cuando tengamos rtc
+DateTime ahora;
 uint32_t horas=0;  
 uint32_t minutos=0;
 byte pista=0;
-static uint32_t oldtime=millis();
+// static uint32_t oldtime=millis();
+RTC_DS3231 rtc;
+
 TM1637Display display = TM1637Display(CLK, DIO);
 
 char *file[] ={  "01bds.wav", //0
@@ -63,39 +66,108 @@ tmrpcm.quality(1);
    tmrpcm.setVolume(volumen);
 
 
-     reproducirFichero(file[1]);
+  
     
 
 display.clear();
 delay(1000);
  display.setBrightness(1);
 
-display.showNumberDecEx(obtenerHora(), 0b11100000, true, 4, 0);
+ iniciarRTC();
+   display.showNumberDecEx(obtenerHora(), 0b11100000, true, 4, 0);
+    Serial.print(F("Fecha es "));
+   Serial.print(ahora.day());
+       Serial.print(F(" de "));
+   Serial.print(ahora.month());
+   Serial.print(F(" de "));
+   Serial.println(ahora.year(),DEC);
+   Serial.print(F(" Día de la semana (0 domingo, 6 sábado):  "));
+    Serial.println(ahora.dayOfTheWeek());
+    if (ahora.dayOfTheWeek() !=0)
+    reproducirFichero(file[ahora.dayOfTheWeek()]);
+    else
+    reproducirFichero(file[7]);
 
+    delay(2000);
+    switch (ahora.dayOfTheWeek()){
+    case 1:
+       reproducirFichero(file[8]);
+       break;
+    case 2:
+       reproducirFichero(file[8]);
+       break;
+    case 3:
+       reproducirFichero(file[8]);
+       break;
+    case 4:
+       reproducirFichero(file[8]);
+       break;
+    case 5:
+      
+       reproducirFichero(file[8]);
+       break;
+    case 6:
+       reproducirFichero(file[1]);
+       break;
+    case 0:
+       reproducirFichero(file[1]);
+       break;
+    }
 }
 
 void loop() {
   
-if( (millis()-oldtime) > 60000){
+ /*if( (millis()-oldtime) > 60000){
   oldtime = millis(); //ha pasado un minuto, actualizamos
   //cada minuto actualizamos
  
   minutos++;
-      display.showNumberDecEx(obtenerHora(), 0b11100000, true, 4, 0);
+  }*/
+      //display.showNumberDecEx(obtenerHora(), 0b11100000, true, 4, 0);
+        //   delay(1000);
 
-}
-
+// display.showNumberDec(obtenerHora(), true);
 recibirpista();
   // Print 1234 with the center colon:
   //display.showNumberDecEx(obtenerHora(), 0b11100000, false, 4, 0);
+   display.showNumberDecEx(obtenerHora(), 0b11100000, true, 4, 0);
 }
 
+void iniciarRTC(){
+  
+  //modulo reloj
+   Serial.println(F("Cargando RTC..."));
+delay(1000);
+ if (!rtc.begin()) {
+      Serial.println(F("Módulo RTC no cargado!"));
+      while(1);
+   }
+   else{
+       Serial.println(F("Módulo RTC Cargado..."));
+      // if (rtc.lostPower()) {
+      // Fijar a fecha y hora de compilacion
+       // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      
+      // Fijar a fecha y hora específica. En el ejemplo, 21 de Enero de 2016 a las 03:00:00
+      // rtc.adjust(DateTime(2021, 1, 29, 0, 30, 0));
+     // }
+      // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+   //rtc.adjust(DateTime(2021, 1, 29, 0, 30, 0));
+  
+   
+ //  horas = ahora.hour();
+   //minutos = ahora.minute();
+ 
 
+   
+   }
+   delay(1000);
+}
 void recibirpista(){
 
 
 if(irrecv.decode(&codigo)){
-  //Serial.println(F("Se está recibiendo código"));
+  Serial.println(F("Se está recibiendo código"));
   Serial.println(codigo.value,HEX);
   if(codigo.value == Boton_1){
     //Serial.println(F("Se ha pulsado botón 1"));
@@ -180,6 +252,7 @@ void reproducirFichero(char *file){
 int obtenerHora()
 {
 
+
 //millis devuelve los milisegundos que han pasado desde que se inicia, mientras no dispongamos del reloj RTC nos permitirá
 //comprobar si la pantalla 4 digit se actualiza correctamente
 //millis()/3600000 nos daría las horas
@@ -193,7 +266,7 @@ tm1637.display(3, mins%10);
 
 */
 
-
+/*
 if (horas > 24) 
   horas = 0;
 if (minutos >59){
@@ -201,7 +274,7 @@ if (minutos >59){
   horas = horas + 1;
 }
 
-
+*/
 
 
   
@@ -209,17 +282,28 @@ if (minutos >59){
    // Serial.println(millis()/60000);
   //return 1234;
     
-  return (horas*100 + minutos);
+ // return (horas*100 + minutos);
 
-  /* Código cuando tengamos el módulo RTC
+  //Código cuando tengamos el módulo RTC
    // Get current date and time:
-  DateTime now = rtc.now();
+  ahora = rtc.now();
   // Create time format to display:
-  int displaytime = (now.hour() * 100) + now.minute();
+  int displaytime = (ahora.hour() * 100) + ahora.minute();
   // Print displaytime to the Serial Monitor:
-  Serial.println(displaytime);
+  //Serial.println(displaytime);
+
+ /*  Serial.print(F("Fecha es "));
+   Serial.print(ahora.day());
+       Serial.print(F(" de "));
+   Serial.print(ahora.month());
+   Serial.print(F(" de "));
+   Serial.println(ahora.year(),DEC);
+   Serial.print(F(" Día de la semana (0 domingo, 6 sábado):  "));
+    Serial.println(ahora.dayOfTheWeek());
+    */
+  delay(1000);
   return displaytime;
-  */
+  
 }
 
 void iniciarSD()
@@ -230,5 +314,5 @@ void iniciarSD()
     Serial.println(F("Intentando iniciar SD.. Error al iniciar"));
      return; 
   }
-  Serial.println(F("Iniciado correctamente"));
+  Serial.println(F(" SD iniciada correctamente"));
 }
